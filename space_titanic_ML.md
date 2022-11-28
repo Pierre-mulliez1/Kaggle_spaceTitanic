@@ -41,14 +41,24 @@ print(titanic_df.describe())
 # baseline model without feature engineering all TRUE 
 test = [1 for count in range(0,len(titanic_df))]
 no_feature_eng_error = accuracy_score(titanic_df.loc[:,'Transported'].factorize()[0],test)
-print('baseline error without feature engineering is {}'.format(round(no_feature_eng_error,2)))
+print('baseline accuracy without feature engineering is {}'.format(round(no_feature_eng_error,2)))
+```
+
+```python
+# null values 
+print(titanic_df.isnull().sum())
+titanic_df = titanic_df.dropna()
 ```
 
 ```python
 # train test split
+# drop unessesary collumns
 y = titanic_df.loc[:,'Transported']
-X = titanic_df.pop('Transported')
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.7, random_state=42)
+X = titanic_df.loc[:,(titanic_df.columns != 'Transported') & (titanic_df.columns != 'Name')]
+
+#target encoding
+for colname in X.select_dtypes("object"):
+    X[colname], _ = X[colname].factorize()
 ```
 
 ```python
@@ -56,5 +66,22 @@ X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.7, random_
 def scale(X):
     X_scaled = (X - X.mean(axis=0)) / X.std(axis=0)
     return X_scaled
-X_scaled = scale(X_train)
+X_scaled = scale(X)
+```
+
+```python
+X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size=0.7, random_state=42)
+```
+
+```python
+from sklearn.ensemble import RandomForestClassifier
+clf = RandomForestClassifier(max_depth=2, random_state=0)
+clf.fit(X_train,y_train)
+predictions = clf.predict(X_test)
+first_model_error = accuracy_score(y_test,predictions)
+print('Random forest accuracy:  {}'.format(round(first_model_error,2)))
+```
+
+```python
+
 ```
