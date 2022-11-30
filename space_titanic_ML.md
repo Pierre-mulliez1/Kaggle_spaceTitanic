@@ -24,7 +24,9 @@ jupyter:
 import pandas as pd 
 import numpy as np
 from sklearn.metrics import accuracy_score
+from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestClassifier
 ```
 
 ```python
@@ -47,7 +49,8 @@ print('baseline accuracy without feature engineering is {}'.format(round(no_feat
 ```python
 # null values 
 print(titanic_df.isnull().sum())
-titanic_df = titanic_df.dropna()
+#titanic_df = titanic_df.dropna()
+titanic_df.loc[titanic_df['Destination'].isnull() == True,:].head(10)
 ```
 
 ```python
@@ -57,8 +60,11 @@ y = titanic_df.loc[:,'Transported']
 X = titanic_df.loc[:,(titanic_df.columns != 'Transported') & (titanic_df.columns != 'Name')]
 
 #target encoding
-for colname in X.select_dtypes("object"):
-    X[colname], _ = X[colname].factorize()
+def encode(X):
+    for colname in X.select_dtypes("object"):
+        X[colname], _ = X[colname].factorize()
+    return X
+X = encode(X)
 ```
 
 ```python
@@ -70,11 +76,32 @@ X_scaled = scale(X)
 ```
 
 ```python
+### null values 
+def replace_nulls(data,train_variables,collumn_predict):
+    # if nulls in train variable mean 
+    for train_var in train_variables:
+        data.loc[data[train_var].isnull() == True,:] = data[train_var].mean()
+    # get variable to predict
+    data_pred = data.loc[data[collumn_predict].isnull() == True,:]
+    data_train = data.loc[data[collumn_predict].isnull() == False,:]
+
+    X = data_train.loc[:,train_variables]
+    y = data_train[collumn_predict]
+    
+    reg = LinearRegression().fit(X, y)
+    data.loc[data[collumn_predict].isnull() == True,collumn_predict] = reg.predict(data_pred.loc[:,train_variables])
+    return data
+print(X_scaled.isnull().sum())
+test = replace_nulls(X_scaled, ('Cabin','Age','VIP'),'RoomService')
+print(test.isnull().sum())
+#print(test)
+```
+
+```python
 X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size=0.7, random_state=42)
 ```
 
 ```python
-from sklearn.ensemble import RandomForestClassifier
 clf = RandomForestClassifier(max_depth=2, random_state=0)
 clf.fit(X_train,y_train)
 predictions = clf.predict(X_test)
