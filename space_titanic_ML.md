@@ -77,28 +77,48 @@ X_scaled = scale(X)
 
 ```python
 ### null values 
+
+# values to predict as keys, independent varaibles as values 
+xy_nulls = {'Age':('RoomService','Spa','FoodCourt'),
+            'VIP':('Age','RoomService','Spa'),
+             'HomePlanet':('Age','RoomService','VIP'),
+             'VRDeck':('Age','RoomService','VIP','HomePlanet'),
+            'ShoppingMall':('RoomService','Spa','FoodCourt','VIP','Age')
+               }
+ys = list(xy_nulls.keys())
+
 def replace_nulls(data,train_variables,collumn_predict):
+    
     # if nulls in train variable mean 
     for train_var in train_variables:
-        data.loc[data[train_var].isnull() == True,:] = data[train_var].mean()
+        data.loc[data[train_var].isnull() == True,train_var] = data[train_var].mean()
+    
     # get variable to predict
     data_pred = data.loc[data[collumn_predict].isnull() == True,:]
     data_train = data.loc[data[collumn_predict].isnull() == False,:]
-
+    
+    if len(data_pred) == 0:
+        #escape if no null values
+        return data
+    
     X = data_train.loc[:,train_variables]
     y = data_train[collumn_predict]
     
     reg = LinearRegression().fit(X, y)
+    
+    #replace null values 
     data.loc[data[collumn_predict].isnull() == True,collumn_predict] = reg.predict(data_pred.loc[:,train_variables])
     return data
-print(X_scaled.isnull().sum())
-test = replace_nulls(X_scaled, ('Cabin','Age','VIP'),'RoomService')
-print(test.isnull().sum())
-#print(test)
+
+X_cleaned = X_scaled.copy()
+for ys_unit in ys:
+    X_cleaned = replace_nulls(X_cleaned, xy_nulls[ys_unit],ys_unit)
+
+print(X_cleaned.isnull().sum())
 ```
 
 ```python
-X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size=0.7, random_state=42)
+X_train, X_test, y_train, y_test = train_test_split(X_cleaned, y, test_size=0.7, random_state=42)
 ```
 
 ```python
@@ -107,8 +127,4 @@ clf.fit(X_train,y_train)
 predictions = clf.predict(X_test)
 first_model_error = accuracy_score(y_test,predictions)
 print('Random forest accuracy:  {}'.format(round(first_model_error,2)))
-```
-
-```python
-
 ```
