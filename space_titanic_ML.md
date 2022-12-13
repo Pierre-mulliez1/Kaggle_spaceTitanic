@@ -27,6 +27,7 @@ from datetime import datetime
 from sklearn.metrics import accuracy_score
 from sklearn.linear_model import LinearRegression
 from sklearn.cluster import KMeans
+from sklearn import svm
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import GridSearchCV
@@ -85,6 +86,12 @@ def encode(X):
     for colname in ('CryoSleep','VIP'):
         X[colname] = [int(1) if X.loc[el,colname] == 'True' else 0 for el in range(0,len(X[colname]))]
         
+    #home and destination dummies 
+    planets = pd.get_dummies(X.loc[:,'HomePlanet']).reset_index()
+    destination = pd.get_dummies(X.loc[:,'Destination']).reset_index()
+    Xx = X.reset_index().merge(destination,on='index').merge(planets,on='index')
+    X = Xx.drop(['HomePlanet','Destination','index'],axis = 1).copy()
+
     #factorize the rest
     for colname in X.select_dtypes("object"):
         X[colname], _ = X[colname].factorize()
@@ -136,7 +143,7 @@ def replace_nulls(data,train_variables,collumn_predict):
     y = data_train[collumn_predict]
     X = kmean_pipe(X)
     if  type(data_train.loc[0,collumn_predict]) == str:
-        null_prediction = KMeans(n_clusters=6).fit(X, y)
+        null_prediction = svm.SVC().fit(X, y)
     else:
         null_prediction = LinearRegression().fit(X, y)
     
@@ -163,10 +170,10 @@ def clustering(X,col = ('Age','VIP','cabin_1letter')):
 ```
 
 ```python
-X = encode(X)
 for ys_unit in ys:
     X_cleaned = replace_nulls(X, xy_nulls[ys_unit],ys_unit)
-X_enriched = clustering(X_cleaned)
+X_encoded = encode(X_cleaned)
+X_enriched = clustering(X_encoded)
 ```
 
 ```python
@@ -199,9 +206,9 @@ print('Random forest accuracy:  {}'.format(round(first_model_error,2)))
 ```
 
 ```python
-titanic_df_Kaggle = encode(raw_Kaggle)
 for ys_unit in ys:
-    titanic_df_Kaggle = replace_nulls(titanic_df_Kaggle, xy_nulls[ys_unit],ys_unit)
+    titanic_df_Kaggle = replace_nulls(raw_Kaggle, xy_nulls[ys_unit],ys_unit)
+titanic_df_Kaggle = encode(titanic_df_Kaggle)
 titanic_df_Kaggle_clustered = clustering(titanic_df_Kaggle)
 titanic_df_Kaggle_submit = bestforest.predict(titanic_df_Kaggle_clustered)
 ```
@@ -215,5 +222,5 @@ submit.to_csv('./data/submit_{}.csv'.format(datetime.today().strftime("%d_%m_%Y"
 ```
 
 ```python
-# last score 0.77 
+# last score 0.78
 ```
